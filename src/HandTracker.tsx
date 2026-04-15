@@ -75,13 +75,28 @@ const HAND_CONNECTIONS: [number, number][] = [
   [0, 17],
 ]
 
+const getInitialPipWidth = () => (window.innerWidth <= 768 ? 220 : 320)
+const getInitialPosition = (width: number) => {
+  if (window.innerWidth <= 768) {
+    const height = Math.round((width * 9) / 16)
+    return {
+      left: Math.max(12, window.innerWidth - width - 12),
+      top: Math.max(12, window.innerHeight - height - 12),
+    }
+  }
+
+  return { left: 24, top: 24 }
+}
+
 export function HandTracker() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dragStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(
     null,
   )
-  const [position, setPosition] = useState({ left: 24, top: 24 })
+  const resizeStartRef = useRef<{ x: number; y: number; width: number } | null>(null)
+  const [pipWidth, setPipWidth] = useState(() => getInitialPipWidth())
+  const [position, setPosition] = useState(() => getInitialPosition(getInitialPipWidth()))
   const lastSnapAtRef = useRef(0)
   const snapArmedRef = useRef(true)
   const setPinchDistance = useHandStore((state) => state.setPinchDistance)
@@ -90,8 +105,21 @@ export function HandTracker() {
   const setIsRockGesture = useHandStore((state) => state.setIsRockGesture)
   const setIsMoonwalkGesture = useHandStore((state) => state.setIsMoonwalkGesture)
 
-  const videoWidth = 320
-  const videoHeight = 180
+  const trackingWidth = 640
+  const trackingHeight = 360
+  const pipHeight = Math.round((pipWidth * 9) / 16)
+
+  useEffect(() => {
+    const clampPositionToViewport = () => {
+      setPosition((prev) => ({
+        left: Math.min(Math.max(0, prev.left), Math.max(0, window.innerWidth - pipWidth)),
+        top: Math.min(Math.max(0, prev.top), Math.max(0, window.innerHeight - pipHeight)),
+      }))
+    }
+
+    window.addEventListener('resize', clampPositionToViewport)
+    return () => window.removeEventListener('resize', clampPositionToViewport)
+  }, [pipWidth, pipHeight])
 
   useEffect(() => {
     const video = videoRef.current
@@ -197,14 +225,14 @@ export function HandTracker() {
       onFrame: async () => {
         await hands.send({ image: video })
       },
-      width: videoWidth,
-      height: videoHeight,
+      width: trackingWidth,
+      height: trackingHeight,
     })
 
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: videoWidth, height: videoHeight },
+          video: { width: trackingWidth, height: trackingHeight },
         })
         video.srcObject = stream
         await video.play()
@@ -253,14 +281,35 @@ export function HandTracker() {
     dragStartRef.current = null
   }
 
+  const handleResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    resizeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      width: pipWidth,
+    }
+  }
+
+  const handleResizePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizeStartRef.current) return
+    const dx = event.clientX - resizeStartRef.current.x
+    const nextWidth = Math.min(520, Math.max(220, resizeStartRef.current.width + dx))
+    setPipWidth(nextWidth)
+  }
+
+  const handleResizePointerUp = () => {
+    resizeStartRef.current = null
+  }
+
   return (
     <div
       style={{
         position: 'absolute',
         left: position.left,
         top: position.top,
-        width: videoWidth,
-        height: videoHeight,
+        width: pipWidth,
+        height: pipHeight,
         cursor: 'grab',
         zIndex: 20,
       }}
@@ -296,14 +345,33 @@ export function HandTracker() {
         />
         <canvas
           ref={canvasRef}
-          width={videoWidth}
-          height={videoHeight}
+          width={trackingWidth}
+          height={trackingHeight}
           style={{
             position: 'absolute',
             inset: 0,
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
+          }}
+        />
+        <div
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+          onPointerCancel={handleResizePointerUp}
+          style={{
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+            width: 22,
+            height: 22,
+            cursor: 'nwse-resize',
+            borderTopLeftRadius: 10,
+            background:
+              'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.28) 100%)',
+            borderLeft: '1px solid rgba(255,255,255,0.24)',
+            borderTop: '1px solid rgba(255,255,255,0.24)',
           }}
         />
       </div>

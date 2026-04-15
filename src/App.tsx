@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -118,6 +118,24 @@ function AnimatedCube() {
 function App() {
   const isRockGesture = useHandStore((state) => state.isRockGesture)
   const isMoonwalkGesture = useHandStore((state) => state.isMoonwalkGesture)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768)
+  const [showMobileHelp, setShowMobileHelp] = useState(false)
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (!showMobileHelp) return
+    const timeoutId = window.setTimeout(() => {
+      setShowMobileHelp(false)
+    }, 7000)
+    return () => window.clearTimeout(timeoutId)
+  }, [showMobileHelp])
 
   return (
     <div
@@ -139,40 +157,101 @@ function App() {
         <AnimatedCube />
       </Canvas>
 
-      <div
-        style={{
-          position: 'absolute',
-          left: 24,
-          top: 24,
-          maxWidth: 340,
-          padding: '24px 26px',
-          borderRadius: 28,
-          background: 'rgba(255,255,255,0.12)',
-          border: '1px solid rgba(255,255,255,0.18)',
-          backdropFilter: 'blur(24px)',
-          color: '#f9f9ff',
-          boxShadow: '0 32px 70px rgba(0,0,0,0.35)',
-          zIndex: 15,
-        }}
-      >
-        <h1
+      {!isMobile && (
+        <div
           style={{
-            margin: 0,
-            fontSize: '1.35rem',
-            letterSpacing: '0.03em',
-            marginBottom: 16,
+            position: 'absolute',
+            left: 24,
+            top: 24,
+            maxWidth: 340,
+            padding: '24px 26px',
+            borderRadius: 28,
+            background: 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            backdropFilter: 'blur(24px)',
+            color: '#f9f9ff',
+            boxShadow: '0 32px 70px rgba(0,0,0,0.35)',
+            zIndex: 15,
           }}
         >
-          VIBE CODING: HAND CONTROLS
-        </h1>
-        <ul style={{ paddingLeft: 18, margin: 0, lineHeight: 1.9 }}>
-          <li>🤏 Right Hand Pinch: Scale Cube</li>
-          <li>👌 Right Hand Finger Snap: Switch Neon Color</li>
-          <li>✋ Left Hand Move: Rotate Cube in 3D</li>
-          <li>🤘 Left Hand Rock On: Bat Mode</li>
-          <li>🕺 Left Hand Walk + Flip: Moonwalk Mode</li>
-        </ul>
-      </div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '1.35rem',
+              letterSpacing: '0.03em',
+              marginBottom: 16,
+            }}
+          >
+            HAND CONTROLS
+          </h1>
+          <ul style={{ paddingLeft: 18, margin: 0, lineHeight: 1.9 }}>
+            <li>🤏 Left Hand Pinch: Scale Cube</li>
+            <li>👌 Left Hand Finger Snap: Switch Neon Color</li>
+            <li>✋ Right Hand Move: Rotate Cube in 3D</li>
+            <li>🕺 Right Hand Walk + Flip: Moonwalk Mode</li>
+          </ul>
+        </div>
+      )}
+
+      {isMobile && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowMobileHelp(true)}
+            style={{
+              position: 'absolute',
+              left: 14,
+              top: 14,
+              width: 38,
+              height: 38,
+              borderRadius: '50%',
+              border: '1px solid rgba(255,255,255,0.35)',
+              background: 'rgba(20, 24, 40, 0.78)',
+              color: '#f3f6ff',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
+              zIndex: 18,
+              cursor: 'pointer',
+            }}
+          >
+            i
+          </button>
+
+          {showMobileHelp && (
+            <div
+              style={{
+                position: 'absolute',
+                left: 14,
+                right: 14,
+                top: 58,
+                padding: '14px 16px',
+                borderRadius: 16,
+                background: 'rgba(20, 24, 40, 0.84)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#f3f6ff',
+                backdropFilter: 'blur(14px)',
+                boxShadow: '0 20px 48px rgba(0,0,0,0.4)',
+                zIndex: 18,
+              }}
+            >
+              <div style={{ fontSize: '0.84rem', opacity: 0.75, marginBottom: 8 }}>
+                HAND CONTROLS
+              </div>
+              <div style={{ fontSize: '0.97rem', lineHeight: 1.55 }}>
+                🤏 Left Hand Pinch: Scale Cube
+                <br />
+                👌 Left Hand Finger Snap: Switch Neon Color
+                <br />
+                ✋ Right Hand Move: Rotate Cube in 3D
+                <br />
+                🕺 Right Hand Walk + Flip: Moonwalk Mode
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {isRockGesture && (
         <div
